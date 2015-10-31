@@ -1,0 +1,47 @@
+// This is a 'Groovy' script
+// -------------------------
+// original code : attila.kelemen - plugins.netbeans.org/plugin/44510/gradle-support
+// https://github.com/kelemen/netbeans-gradle-project
+
+/*
+ *  Settings.rootProject
+ *  docs.gradle.org/current/javadoc/org/gradle/api/initialization/ProjectDescriptor.html */
+rootProject.name = 'gradleStudyAC'
+
+
+/**
+ * Settings.rootDir   (java.io.File)
+ * 
+ * Within the ROOT directory : Find sub-directories containing 'build.gradle'.
+ * Every sub-directory containing A 'build.gradle'
+ * will be automatically a subproject of this root project. */
+def subDirs = rootDir.listFiles(new FileFilter() {
+    public boolean accept(File file) {
+        if (!file.isDirectory()) {
+            return false
+        }
+        if (file.name == 'buildSrc') {
+            return false
+        }
+        return new File(file, 'build.gradle').isFile()
+    }
+});
+
+
+
+/* Groovy script flow (@grandyossi edit) :
+ * Actual project <=> Has subprojects */
+if(subDirs.size() == 0) {
+    throw new Exception("Missing subproject[s]")
+}
+
+
+/**
+ * [ ] grails.asia/groovy-each-examples
+ * 
+ * [ ] Settings.include
+ *     docs.gradle.org/current/dsl/org.gradle.api.initialization.Settings.html#org.gradle.api.initialization.Settings:include(java.lang.String[]) */
+subDirs.each { File dir ->
+    include dir.name
+    logger.quiet "settings :   subproject included ($dir.name)"
+}

@@ -1,0 +1,133 @@
+// original code : attila.kelemen - plugins.netbeans.org/plugin/44510/gradle-support
+// This file is to be applied to every subproject.
+
+apply plugin:'java'
+apply plugin:'maven'
+sourceCompatibility = '1.8'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+// `project.group` is set for `allprojects` (@root 'build.gradle')
+String  mavenGroupId = project.group
+// project.name
+String  mavenArtifactId = name
+
+
+
+repositories {
+    mavenCentral();
+    // May define additional repositories, or even remove "mavenCentral()".
+    // Read more about repositories here:
+    // gradle.org/docs/current/userguide/dependency_management.html#sec:repositories
+}
+
+dependencies {
+    // Adding dependencies here will add the dependencies to each subproject
+    testCompile group:'junit', name:'junit', version:'4.10'
+}
+
+
+
+
+task sourcesJar(type: Jar, dependsOn: classes, description: 'Creates a jar from the source files.') {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives jar
+    archives sourcesJar
+}
+
+
+/**
+ * Task name is 'mavenInstaller'
+ * Notice : configuration phase only
+ * [edited : grandyossi , date="2015-10-30"] */
+configure(install.repositories.mavenInstaller) {
+    ext.versionBuild = getVersionBuildFromFile()
+    project.version = ext.versionBase + "." + ext.versionBuild
+    //
+    pom.project {
+        groupId = mavenGroupId
+        artifactId = mavenArtifactId
+        version = project.version
+    }
+    logger.quiet "done :   $it.name ($project.version)"
+}
+
+
+
+task createFolders(description: 'Creates the source folders if they do not exist.') doLast {
+    sourceSets*.allSource*.srcDirs*.each { File srcDir ->
+        if (!srcDir.isDirectory()) {
+            println "Creating source folder: ${srcDir}"
+            srcDir.mkdirs()
+        }
+    }
+}
+
+
+
+task  incrementVersionBuild(
+                type:Jar,
+                description:'Increment build value / counter') << {
+    /*
+        http://ant.apache.org/manual/Tasks/propertyfile.html */
+    ant.propertyfile(file:buildPropzFile) {
+        entry(key:'build', type:'int', operation:'+', value:'1')
+    }
+    logger.quiet 'done :  incrementVersionBuild'
+}
+// THE `jar` task will be followed by `incrementVersionBuild`
+jar.finalizedBy incrementVersionBuild
+
+
+/**
+ * Two phases in this task :   configuration , execution (build)
+ * Read : docs.gradle.org/current/userguide/build_lifecycle.html
+ * @author (name="grandyossi" , date="2015-10-31") */
+task  copyDependenciesToLocalFolder {
+    String  depend = 'depend'
+    File    outDir = file(depend)
+    outputs.file files(outDir)
+    logger.quiet "$it.name:   OUT :   $outDir"
+    //
+    doLast {
+        copy {
+            def  compileRequiredJarz = files(configurations.compile)
+            logger.quiet "copyDependenciesToLocalFolder :   $compileRequiredJarz.asPath"
+            //
+            from compileRequiredJarz
+            into outDir
+            //
+            // err it.name   logger.quiet "done :  $it.name (doLast)"
+            logger.quiet 'done :   copyDependenciesToLocalFolder'
+        }
+    }
+}
+/* THE `build` task.
+ * 
+ * FYI ok :     X.finalizedBy a, b, c
+ * ALSO (i.e)
+ * for the same `X` task,
+ * can be written in a subproject's `build.gradle` :
+ * X.finalizedBy d, e
+ */
+build.finalizedBy copyDependenciesToLocalFolder
+
+
+/**
+ * Build number from file.
+ * @author (name="grandyossi" , date="2015-10-30") */
+String  getVersionBuildFromFile() {
+    /* `ext.buildPropzFile` is defined for `subprojects`
+     * NOTICE : 'buildFile' is already defined (value is 'build.gradle') */
+    if(!buildPropzFile.exists())
+        throw new Exception("Missing file :   $buildPropzFile.name")
+    Properties  propz = new Properties()
+    buildPropzFile.withInputStream { stream -> propz.load(stream) }
+    Integer     propzCount = propz.size()
+    if(propzCount != 1)
+        throw new Exception("Should be ONE property. Counted : $propzCount")
+    // return
+    propz.build // .toBoolean()
+}

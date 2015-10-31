@@ -1,0 +1,53 @@
+// original code : attila.kelemen - plugins.netbeans.org/plugin/44510/gradle-support
+
+if (!hasProperty('mainClass')) {
+    ext.mainClass = ''
+}
+
+dependencies {
+    // Notice : JUnit should have already been added in parent's 'build.gradle'.
+    // By default, only the Maven Central Repository is specified in it.
+    //
+    // gradle.org/docs/current/userguide/dependency_management.html#sec:how_to_declare_your_dependencies
+    compile 'org.mongodb:mongodb-driver-async:3.1.0'
+}
+
+
+/**
+ * @deprecated : skip via exception | enabled = false
+ * task configuration 
+ * @author (name="grandyossi" , date="2015-10-31") */
+task  copyDependenciesToLocalFolderDep(type:Copy) {
+    //
+    enabled = false
+    //throw new StopExecutionException('deprecated')
+    //
+    String  dependz = 'dependz'
+    /* stackoverflow.com/questions/21814652/how-to-download-dependencies-in-gradle
+     * discuss.gradle.org/t/how-to-download-maven-dependencies-into-project-local-directory-and-set-eclipse-classpath/9851 */
+    def  runtimeJarz =  files(
+                            files(sourceSets.main.runtimeClasspath
+                            ).find({ elem -> elem.isFile() }))
+    /* version build is NEVER 'UP-TO-DATE' :
+     * incremented @ 'common.gradle' (`configure`) */
+    // inputs.property 'version', project.version
+    File  outDir = file(dependz)
+    // 'UP-TO-DATE' only after files are copied
+    outputs.file files(outDir)
+    //
+    logger.quiet "deprecated:   OUT :   $outDir"
+    /* set by `dependencies`
+     * MOST accurate, since it will resolve to full dependencies list */
+    def  compileRequiredJarz = files(configurations.compile)
+    //$ NOT equal
+    //  *********
+    // assert (compileRequiredJarz.asPath == runtimeJarz.asPath)
+    logger.quiet "Copy files [deprecated] :   $compileRequiredJarz.asPath"
+    //
+    from compileRequiredJarz
+    into outDir
+    //
+    logger.quiet 'done :  deprecated'
+}
+// Notice : root's 'common.gradle' contains a `build.finalizedBy` code.
+build.finalizedBy copyDependenciesToLocalFolderDep //SKIPPED
